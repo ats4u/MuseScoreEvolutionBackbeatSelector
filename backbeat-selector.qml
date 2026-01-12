@@ -10,7 +10,7 @@ MuseScore {
 
     // *** IMPORTANT: make this a dialog plugin and give it a size ***
     pluginType: "dialog"
-    width: 280
+    width: 400
     height: 140
 
     // Reusable predicates
@@ -92,6 +92,75 @@ MuseScore {
         // Do *not* Qt.quit() here if you want the dialog to stay open.
     }
 
+
+    // Select the lowest note of each chord (ignores onbeat/offbeat)
+    function runSelectLowestNotes() {
+        if (!curScore)
+            return;
+
+        var sel = curScore.selection;
+        if (!sel || !sel.isRange || !sel.startSegment || !sel.endSegment) {
+            console.log("Select Lowest Notes: no range selection – abort.");
+            return;
+        }
+
+        var startTick  = sel.startSegment.tick;
+        var endTick    = sel.endSegment.tick;
+        var startStaff = sel.startStaff;
+        var endStaff   = sel.endStaff;
+
+        var nstaves = curScore.nstaves;
+        if (startStaff < 0)
+            startStaff = 0;
+        if (endStaff >= nstaves)
+            endStaff = nstaves - 1;
+
+        curScore.selection.clear();
+
+        for (var staff = startStaff; staff <= endStaff; ++staff) {
+            for (var voice = 0; voice < 4; ++voice) {
+                var cursor = curScore.newCursor();
+                cursor.staffIdx = staff;
+                cursor.voice    = voice;
+
+                cursor.rewind(Cursor.SCORE_START);
+                while (cursor.segment && cursor.segment.tick < startTick)
+                    cursor.next();
+
+                while (cursor.segment && cursor.segment.tick < endTick) {
+                    var el = cursor.element;
+
+                    if (el && el.type === Element.CHORD) {
+                        var notes = el.notes;
+                        if (notes && notes.length > 0) {
+                            var lowest = notes[0];
+                            for (var i = 1; i < notes.length; ++i) {
+                                if (notes[i].pitch < lowest.pitch)
+                                    lowest = notes[i];
+                            }
+                            curScore.selection.select(lowest, true);
+                        }
+                    }
+
+                    cursor.next();
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     onRun: {
         console.log("Select Onbeat/Offbeat: UI ready.");
         // For dialog plugins, just returning here leaves the window open.
@@ -122,6 +191,12 @@ MuseScore {
                 text: "Offbeats (2,4,6,...)"
                 onClicked: {
                     runSelection(pattern.offbeat);
+                }
+            }
+            Button {
+                text: "Lowest notes"
+                onClicked: {
+                    runSelectLowestNotes();
                 }
             }
         }
