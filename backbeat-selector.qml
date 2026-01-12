@@ -3,7 +3,7 @@ import QtQuick.Controls 1.2
 import MuseScore 3.0
 
 MuseScore {
-    menuPath: "Plugins.Select Onbeat/Offbeat notes"
+    menuPath: "Plugins.Select Backbeat Selector"
     description: "Within the current range selection, select only onbeat (odd index) or offbeat (even index) note onsets."
     version: "1.2"
     requiresScore: true
