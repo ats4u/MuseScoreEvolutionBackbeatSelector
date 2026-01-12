@@ -148,6 +148,64 @@ MuseScore {
         }
     }
 
+    // Select all notes in each chord except the lowest note (ignores onbeat/offbeat)
+    function runSelectAllButLowestNotes() {
+        if (!curScore)
+            return;
+
+        var sel = curScore.selection;
+        if (!sel || !sel.isRange || !sel.startSegment || !sel.endSegment) {
+            console.log("Select All-But-Lowest: no range selection – abort.");
+            return;
+        }
+
+        var startTick  = sel.startSegment.tick;
+        var endTick    = sel.endSegment.tick;
+        var startStaff = sel.startStaff;
+        var endStaff   = sel.endStaff;
+
+        var nstaves = curScore.nstaves;
+        if (startStaff < 0)
+            startStaff = 0;
+        if (endStaff >= nstaves)
+            endStaff = nstaves - 1;
+
+        curScore.selection.clear();
+
+        for (var staff = startStaff; staff <= endStaff; ++staff) {
+            for (var voice = 0; voice < 4; ++voice) {
+                var cursor = curScore.newCursor();
+                cursor.staffIdx = staff;
+                cursor.voice    = voice;
+
+                cursor.rewind(Cursor.SCORE_START);
+                while (cursor.segment && cursor.segment.tick < startTick)
+                    cursor.next();
+
+                while (cursor.segment && cursor.segment.tick < endTick) {
+                    var el = cursor.element;
+
+                    if (el && el.type === Element.CHORD) {
+                        var notes = el.notes;
+                        if (notes && notes.length > 1) {
+                            var lowest = notes[0];
+                            for (var i = 1; i < notes.length; ++i) {
+                                if (notes[i].pitch < lowest.pitch)
+                                    lowest = notes[i];
+                            }
+                            for (var j = 0; j < notes.length; ++j) {
+                                if (notes[j].pitch != lowest.pitch )
+                                    curScore.selection.select(notes[j], true);
+                            }
+                        }
+                    }
+
+                    cursor.next();
+                }
+            }
+        }
+    }
+
 
 
 
@@ -197,6 +255,12 @@ MuseScore {
                 text: "Lowest notes"
                 onClicked: {
                     runSelectLowestNotes();
+                }
+            }
+            Button {
+                text: "All but lowest notes"
+                onClicked: {
+                    runSelectAllButLowestNotes();
                 }
             }
         }
